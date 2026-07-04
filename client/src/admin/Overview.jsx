@@ -17,9 +17,14 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Members" value={data.member_count} />
         <StatCard label="Collected this month" value={formatUGX(data.collected_this_month_ugx)} />
+        <StatCard
+          label="Pending payments"
+          value={data.pending_payments}
+          highlight={data.pending_payments > 0}
+        />
         <StatCard
           label="Next session"
           value={next ? `${formatDate(next.date)} · ${next.booked_count}/${next.capacity} booked` : 'None scheduled'}
@@ -72,11 +77,13 @@ export default function Overview() {
   );
 }
 
-function StatCard({ label, value, small }) {
+function StatCard({ label, value, small, highlight }) {
   return (
-    <div className="rounded-xl border border-club/20 p-4">
+    <div className={`rounded-xl border p-4 ${highlight ? 'border-amber-300 bg-amber-50' : 'border-club/20'}`}>
       <p className="text-xs uppercase tracking-wide text-forest/50">{label}</p>
-      <p className={`mt-1 font-bold text-club ${small ? 'text-sm' : 'text-2xl'}`}>{value}</p>
+      <p className={`mt-1 font-bold ${highlight ? 'text-amber-700' : 'text-club'} ${small ? 'text-sm' : 'text-2xl'}`}>
+        {value}
+      </p>
     </div>
   );
 }

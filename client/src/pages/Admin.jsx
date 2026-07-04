@@ -4,9 +4,10 @@ import { api, getToken, setToken } from '../api.js';
 import Overview from '../admin/Overview.jsx';
 import Sessions from '../admin/Sessions.jsx';
 import Members from '../admin/Members.jsx';
+import Payments from '../admin/Payments.jsx';
 import Announcements from '../admin/Announcements.jsx';
 
-const TABS = ['Overview', 'Sessions', 'Members', 'Announcements'];
+const TABS = ['Overview', 'Sessions', 'Members', 'Payments', 'Announcements'];
 
 export default function Admin() {
   const [loggedIn, setLoggedIn] = useState(Boolean(getToken()));
@@ -64,6 +65,7 @@ export default function Admin() {
         {tab === 'Overview' && <Overview />}
         {tab === 'Sessions' && <Sessions />}
         {tab === 'Members' && <Members />}
+        {tab === 'Payments' && <Payments />}
         {tab === 'Announcements' && <Announcements />}
       </main>
     </div>

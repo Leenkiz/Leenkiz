@@ -221,6 +221,8 @@ function Roster({ sessionId, onChanged }) {
             <div className="flex items-center gap-2">
               <span className="font-medium">{b.name}</span>
               <StatusBadge status={b.status} />
+              {b.payment_status === 'paid' && <span className="text-xs font-semibold text-club">paid</span>}
+              {b.payment_status === 'pending' && <span className="text-xs text-amber-700">payment pending</span>}
             </div>
             <div className="flex gap-2 shrink-0 text-xs">
               {['booked', 'waitlist'].includes(b.status) && (

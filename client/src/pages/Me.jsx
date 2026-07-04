@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { formatUGX, formatDate } from '../format.js';
 import { getMemberPhone, setMemberPhone } from '../member.js';
 
-// The member area: her upcoming bookings + booking a spot in a session.
+// The member area: her upcoming bookings, booking a spot, and paying by MoMo.
 // "Login" is just her phone number (v1 decision — no passwords).
 export default function Me() {
   const [phone, setPhone] = useState(getMemberPhone());
@@ -114,6 +114,9 @@ function PhoneLogin({ initialError, onLogin }) {
 function MemberHome({ member, onLogout }) {
   const [bookings, setBookings] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [payInfo, setPayInfo] = useState(null);
+  const [payingFor, setPayingFor] = useState(null); // booking id | 'membership' | null
   const [notice, setNotice] = useState(null); // { kind: 'ok' | 'warn', text }
   const [error, setError] = useState('');
 
@@ -121,10 +124,14 @@ function MemberHome({ member, onLogout }) {
     Promise.all([
       api(`/api/public/my-bookings?phone=${encodeURIComponent(member.phone)}`),
       api('/api/public/sessions'),
+      api(`/api/public/my-payments?phone=${encodeURIComponent(member.phone)}`),
+      api('/api/public/payment-info'),
     ])
-      .then(([b, s]) => {
+      .then(([b, s, p, info]) => {
         setBookings(b);
         setSessions(s);
+        setPayments(p);
+        setPayInfo(info);
       })
       .catch((err) => setError(err.message));
 
@@ -165,6 +172,27 @@ function MemberHome({ member, onLogout }) {
     }
   };
 
+  const submitPayment = async (reference, bookingId) => {
+    setError('');
+    setNotice(null);
+    try {
+      await api('/api/public/payments', {
+        method: 'POST',
+        body: { phone: member.phone, reference, ...(bookingId ? { booking_id: bookingId } : {}) },
+      });
+      setPayingFor(null);
+      setNotice({ kind: 'ok', text: 'Reference received! The organizer will confirm your payment shortly.' });
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Monthly membership state, from her own payment history.
+  const thisMonth = new Date().toLocaleDateString('en-CA').slice(0, 7); // YYYY-MM
+  const membershipPaid = payments.some((p) => !p.booking_id && p.status === 'confirmed' && p.date.startsWith(thisMonth));
+  const membershipPending = payments.some((p) => !p.booking_id && p.status === 'pending');
+
   return (
     <Shell member={member} onLogout={onLogout}>
       {notice && (
@@ -178,6 +206,32 @@ function MemberHome({ member, onLogout }) {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {member.membership_type === 'monthly' && payInfo && (
+        <section className="rounded-xl border border-club/20 px-4 py-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">Monthly membership</p>
+              <p className="text-forest/60">{formatUGX(payInfo.membership_monthly_ugx)} per month</p>
+            </div>
+            {membershipPaid ? (
+              <span className="text-club text-xs font-semibold">✓ Paid this month</span>
+            ) : membershipPending ? (
+              <span className="text-amber-700 text-xs font-medium">Awaiting confirmation</span>
+            ) : (
+              <button
+                onClick={() => setPayingFor(payingFor === 'membership' ? null : 'membership')}
+                className="rounded-lg bg-club px-4 py-2 text-white text-xs font-semibold hover:bg-forest shrink-0"
+              >
+                Pay by MoMo
+              </button>
+            )}
+          </div>
+          {payingFor === 'membership' && (
+            <PayPanel amount={payInfo.membership_monthly_ugx} payInfo={payInfo} onSubmit={(ref) => submitPayment(ref, null)} />
+          )}
+        </section>
+      )}
+
       <section>
         <h2 className="text-lg font-bold">My bookings</h2>
         {bookings.length === 0 && (
@@ -185,17 +239,38 @@ function MemberHome({ member, onLogout }) {
         )}
         <ul className="mt-2 space-y-2">
           {bookings.map((b) => (
-            <li key={b.id} className="rounded-xl border border-club/20 px-4 py-3 flex items-center justify-between gap-3 text-sm">
-              <div>
-                <p className="font-semibold">{b.title}</p>
-                <p className="text-forest/60">
-                  {formatDate(b.date)} · {b.start_time}–{b.end_time}
-                </p>
-                {b.status === 'waitlist' && <p className="text-xs font-medium text-amber-700">On the waitlist</p>}
+            <li key={b.id} className="rounded-xl border border-club/20 px-4 py-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{b.title}</p>
+                  <p className="text-forest/60">
+                    {formatDate(b.date)} · {b.start_time}–{b.end_time}
+                  </p>
+                  {b.status === 'waitlist' && <p className="text-xs font-medium text-amber-700">On the waitlist</p>}
+                </div>
+                <div className="text-right shrink-0 space-y-1">
+                  <PaymentChip status={b.payment_status} />
+                  <div>
+                    <button onClick={() => cancel(b)} className="text-red-600 text-xs hover:underline">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => cancel(b)} className="text-red-600 text-xs hover:underline shrink-0">
-                Cancel
-              </button>
+              {b.payment_status === 'unpaid' && member.membership_type !== 'monthly' && payInfo && (
+                <div className="mt-2">
+                  {payingFor === b.id ? (
+                    <PayPanel amount={b.price_ugx} payInfo={payInfo} onSubmit={(ref) => submitPayment(ref, b.id)} />
+                  ) : (
+                    <button
+                      onClick={() => setPayingFor(b.id)}
+                      className="rounded-lg bg-club px-4 py-2 text-white text-xs font-semibold hover:bg-forest"
+                    >
+                      Pay {formatUGX(b.price_ugx)} by MoMo
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -233,5 +308,49 @@ function MemberHome({ member, onLogout }) {
         </ul>
       </section>
     </Shell>
+  );
+}
+
+function PaymentChip({ status }) {
+  if (status === 'paid') return <span className="text-club text-xs font-semibold">✓ Paid</span>;
+  if (status === 'pending') return <span className="text-amber-700 text-xs font-medium">Payment pending</span>;
+  return null;
+}
+
+// MoMo payment instructions + reference form. The amount is fixed by the
+// club (session price or membership fee) — the member only supplies the
+// transaction ID from her MoMo confirmation SMS.
+function PayPanel({ amount, payInfo, onSubmit }) {
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    await onSubmit(reference.trim());
+    setBusy(false);
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-2 rounded-lg bg-forest/5 p-3 space-y-2 text-sm">
+      <p>
+        1. Send <span className="font-bold">{formatUGX(amount)}</span> by MTN MoMo to{' '}
+        <span className="font-bold">{payInfo.momo_number}</span> ({payInfo.momo_name}).
+      </p>
+      <p>2. Enter the transaction ID from your MoMo confirmation SMS:</p>
+      <input
+        value={reference}
+        onChange={(e) => setReference(e.target.value)}
+        placeholder="e.g. MP260704.1234.A12345"
+        className="w-full rounded-lg border border-club/30 px-3 py-2 text-sm bg-white focus:outline-none focus:border-club"
+      />
+      <button
+        type="submit"
+        disabled={busy || !reference.trim()}
+        className="rounded-lg bg-club px-4 py-2 text-white text-xs font-semibold hover:bg-forest disabled:opacity-50"
+      >
+        {busy ? 'Sending…' : 'Submit reference'}
+      </button>
+    </form>
   );
 }
