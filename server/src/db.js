@@ -66,4 +66,25 @@ db.exec(`
     body      TEXT NOT NULL,
     posted_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- "Looking to Play" board: a member posts that she wants to play; others
+  -- show interest; contact is only shared on a mutual accept.
+  CREATE TABLE IF NOT EXISTS play_requests (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id  INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('singles', 'doubles', 'rally')),
+    play_date  TEXT,
+    note       TEXT,
+    status     TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS play_responses (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL REFERENCES play_requests(id) ON DELETE CASCADE,
+    member_id  INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    status     TEXT NOT NULL DEFAULT 'interested' CHECK (status IN ('interested', 'accepted', 'declined')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (request_id, member_id)
+  );
 `);

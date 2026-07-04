@@ -9,6 +9,7 @@ import sessionsRouter from './routes/sessions.js';
 import bookingsRouter from './routes/bookings.js';
 import announcementsRouter from './routes/announcements.js';
 import paymentsRouter from './routes/payments.js';
+import { playPublicRouter, playAdminRouter } from './routes/play.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,8 +25,9 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Member-facing routes (no login) — see routes/public.js.
+// Member-facing routes (no login) — see routes/public.js and routes/play.js.
 app.use('/api/public', publicRouter);
+app.use('/api/public/play', playPublicRouter);
 
 app.use('/api/admin', adminRouter);
 // Everything below is admin-only.
@@ -34,6 +36,7 @@ app.use('/api/sessions', requireAdmin, sessionsRouter);
 app.use('/api/bookings', requireAdmin, bookingsRouter);
 app.use('/api/announcements', requireAdmin, announcementsRouter);
 app.use('/api/payments', requireAdmin, paymentsRouter);
+app.use('/api/play-requests', requireAdmin, playAdminRouter);
 
 app.listen(PORT, () => {
   console.log(`Gems & Rackets API running at http://localhost:${PORT}`);

@@ -3,8 +3,8 @@
 // routes never expose other members' data (CLAUDE.md privacy guardrail).
 import { Router } from 'express';
 import { db } from '../db.js';
-import { normalizePhone } from '../phone.js';
 import { createBooking, cancelBooking } from '../booking-core.js';
+import { findMemberByPhone } from '../member-lookup.js';
 import { validateMemberInput } from './members.js';
 import { paymentInfo, MEMBERSHIP_MONTHLY_UGX, nowLocal } from '../config.js';
 
@@ -16,14 +16,6 @@ const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 // Only what a member needs to know about herself.
 function memberView(m) {
   return { id: m.id, name: m.name, phone: m.phone, membership_type: m.membership_type };
-}
-
-function findMemberByPhone(rawPhone) {
-  const phone = normalizePhone(rawPhone);
-  if (!phone) return { error: 'Please enter a valid Ugandan mobile number (e.g. 0772 123456).' };
-  const member = db.prepare('SELECT * FROM members WHERE phone = ?').get(phone);
-  if (!member) return { error: 'No member found with this phone number — join the club first!' };
-  return { member };
 }
 
 // Upcoming sessions with spots remaining (no roster — that stays admin-only).
