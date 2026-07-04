@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Brand colors (CLAUDE.md): forest green, green, lime — on white. */
+@theme {
+  --color-forest: #0d2818;
+  --color-club: #2f7a3f;
+  --color-lime: #5ba82e;
+}

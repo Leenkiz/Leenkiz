@@ -1,0 +1,21 @@
+{
+  "name": "gems-and-rackets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gems & Rackets — women's community tennis platform, Kampala. Booking, membership, MoMo payments, community.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
