@@ -6,6 +6,7 @@ import { db } from '../db.js';
 import { normalizePhone } from '../phone.js';
 import { createBooking, cancelBooking } from '../booking-core.js';
 import { validateMemberInput } from './members.js';
+import { paymentInfo, MEMBERSHIP_MONTHLY_UGX, nowLocal } from '../config.js';
 
 const router = Router();
 
@@ -68,20 +69,98 @@ router.post('/login', (req, res) => {
   res.json(memberView(member));
 });
 
-// A member's own upcoming bookings.
+// A member's own upcoming bookings, each with its payment state.
 router.get('/my-bookings', (req, res) => {
   const { member, error } = findMemberByPhone(req.query.phone);
   if (error) return res.status(404).json({ error });
   const bookings = db
     .prepare(
       `SELECT b.id, b.status, b.created_at,
-              s.id AS session_id, s.title, s.date, s.start_time, s.end_time, s.coach, s.price_ugx
+              s.id AS session_id, s.title, s.date, s.start_time, s.end_time, s.coach, s.price_ugx,
+              CASE
+                WHEN EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'confirmed') THEN 'paid'
+                WHEN EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'pending') THEN 'pending'
+                ELSE 'unpaid'
+              END AS payment_status
        FROM bookings b JOIN sessions s ON s.id = b.session_id
        WHERE b.member_id = ? AND b.status != 'cancelled' AND s.date >= ?
        ORDER BY s.date, s.start_time`,
     )
     .all(member.id, today());
   res.json(bookings);
+});
+
+// How to pay: the club's MoMo number and prices.
+router.get('/payment-info', (_req, res) => {
+  res.json(paymentInfo());
+});
+
+// A member's own payments (so she can see pending vs confirmed).
+router.get('/my-payments', (req, res) => {
+  const { member, error } = findMemberByPhone(req.query.phone);
+  if (error) return res.status(404).json({ error });
+  const payments = db
+    .prepare(
+      `SELECT p.id, p.booking_id, p.amount_ugx, p.method, p.reference, p.status, p.date,
+              s.title AS session_title
+       FROM payments p
+       LEFT JOIN bookings b ON b.id = p.booking_id
+       LEFT JOIN sessions s ON s.id = b.session_id
+       WHERE p.member_id = ?
+       ORDER BY p.date DESC`,
+    )
+    .all(member.id);
+  res.json(payments);
+});
+
+// Submit a MoMo payment reference — for a booking, or for monthly membership
+// when no booking_id is given. Always lands as "pending": only the admin
+// confirms money (CLAUDE.md guardrail).
+router.post('/payments', (req, res) => {
+  const { member, error } = findMemberByPhone(req.body.phone);
+  if (error) return res.status(404).json({ error });
+
+  const reference = String(req.body.reference || '').trim();
+  if (!reference) return res.status(400).json({ error: 'Please enter the MoMo transaction ID.' });
+
+  let bookingId = null;
+  let amount = MEMBERSHIP_MONTHLY_UGX;
+
+  if (req.body.booking_id) {
+    const booking = db
+      .prepare(
+        `SELECT b.id, s.price_ugx FROM bookings b JOIN sessions s ON s.id = b.session_id
+         WHERE b.id = ? AND b.member_id = ? AND b.status != 'cancelled'`,
+      )
+      .get(Number(req.body.booking_id), member.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+    bookingId = booking.id;
+    amount = booking.price_ugx;
+
+    const existing = db
+      .prepare("SELECT status FROM payments WHERE booking_id = ? AND status IN ('pending', 'confirmed')")
+      .get(bookingId);
+    if (existing) {
+      return res.status(409).json({
+        error: existing.status === 'confirmed' ? 'This booking is already paid.' : 'A payment for this booking is already awaiting confirmation.',
+      });
+    }
+  } else {
+    const pendingMembership = db
+      .prepare("SELECT 1 FROM payments WHERE member_id = ? AND booking_id IS NULL AND status = 'pending'")
+      .get(member.id);
+    if (pendingMembership) {
+      return res.status(409).json({ error: 'Your membership payment is already awaiting confirmation.' });
+    }
+  }
+
+  const result = db
+    .prepare(
+      `INSERT INTO payments (member_id, booking_id, amount_ugx, method, reference, status, date)
+       VALUES (?, ?, ?, 'momo', ?, 'pending', ?)`,
+    )
+    .run(member.id, bookingId, amount, reference, nowLocal());
+  res.status(201).json(db.prepare('SELECT * FROM payments WHERE id = ?').get(result.lastInsertRowid));
 });
 
 // Book a spot (or join the waitlist when full).

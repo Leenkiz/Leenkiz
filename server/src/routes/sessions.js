@@ -55,7 +55,12 @@ router.get('/:id/bookings', (req, res) => {
   const roster = db
     .prepare(
       `SELECT b.id, b.status, b.created_at,
-              m.id AS member_id, m.name, m.phone, m.membership_type
+              m.id AS member_id, m.name, m.phone, m.membership_type,
+              CASE
+                WHEN EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'confirmed') THEN 'paid'
+                WHEN EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'pending') THEN 'pending'
+                ELSE 'unpaid'
+              END AS payment_status
        FROM bookings b JOIN members m ON m.id = b.member_id
        WHERE b.session_id = ?
        ORDER BY CASE b.status

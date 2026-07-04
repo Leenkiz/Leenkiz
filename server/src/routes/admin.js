@@ -34,6 +34,7 @@ router.get('/dashboard', requireAdmin, (_req, res) => {
     db
       .prepare("SELECT SUM(amount_ugx) AS total FROM payments WHERE status = 'confirmed' AND date >= ?")
       .get(monthStart).total || 0;
+  const pendingPayments = db.prepare("SELECT COUNT(*) AS c FROM payments WHERE status = 'pending'").get().c;
   const recentBookings = db
     .prepare(
       `SELECT b.id, b.status, b.created_at, m.name AS member_name, s.title AS session_title, s.date AS session_date
@@ -47,6 +48,7 @@ router.get('/dashboard', requireAdmin, (_req, res) => {
   res.json({
     member_count: memberCount,
     collected_this_month_ugx: collectedThisMonth,
+    pending_payments: pendingPayments,
     upcoming_sessions: upcomingSessions,
     recent_bookings: recentBookings,
   });
