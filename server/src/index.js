@@ -3,6 +3,7 @@ import express from 'express';
 import { db } from './db.js';
 import { requireAdmin } from './auth.js';
 import adminRouter from './routes/admin.js';
+import publicRouter from './routes/public.js';
 import membersRouter from './routes/members.js';
 import sessionsRouter from './routes/sessions.js';
 import bookingsRouter from './routes/bookings.js';
@@ -22,8 +23,11 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// Member-facing routes (no login) — see routes/public.js.
+app.use('/api/public', publicRouter);
+
 app.use('/api/admin', adminRouter);
-// Everything below is admin-only in Phase 1; member-facing routes come in Phase 2.
+// Everything below is admin-only.
 app.use('/api/members', requireAdmin, membersRouter);
 app.use('/api/sessions', requireAdmin, sessionsRouter);
 app.use('/api/bookings', requireAdmin, bookingsRouter);

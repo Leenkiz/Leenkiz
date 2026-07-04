@@ -6,7 +6,7 @@ const router = Router();
 
 const MEMBERSHIP_TYPES = ['monthly', 'drop-in'];
 
-function validateMemberInput(body, { requireAll = true } = {}) {
+export function validateMemberInput(body, { requireAll = true } = {}) {
   const errors = [];
   const out = {};
 

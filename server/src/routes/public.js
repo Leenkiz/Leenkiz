@@ -1,0 +1,105 @@
+// Member-facing routes — no admin token. Members identify themselves by
+// phone number only (v1 decision: no passwords, minimum friction). These
+// routes never expose other members' data (CLAUDE.md privacy guardrail).
+import { Router } from 'express';
+import { db } from '../db.js';
+import { normalizePhone } from '../phone.js';
+import { createBooking, cancelBooking } from '../booking-core.js';
+import { validateMemberInput } from './members.js';
+
+const router = Router();
+
+// The laptop's local time is Kampala time, so JS local dates are correct here.
+const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+// Only what a member needs to know about herself.
+function memberView(m) {
+  return { id: m.id, name: m.name, phone: m.phone, membership_type: m.membership_type };
+}
+
+function findMemberByPhone(rawPhone) {
+  const phone = normalizePhone(rawPhone);
+  if (!phone) return { error: 'Please enter a valid Ugandan mobile number (e.g. 0772 123456).' };
+  const member = db.prepare('SELECT * FROM members WHERE phone = ?').get(phone);
+  if (!member) return { error: 'No member found with this phone number — join the club first!' };
+  return { member };
+}
+
+// Upcoming sessions with spots remaining (no roster — that stays admin-only).
+router.get('/sessions', (_req, res) => {
+  const sessions = db
+    .prepare(
+      `SELECT s.id, s.title, s.date, s.start_time, s.end_time, s.coach, s.capacity, s.price_ugx,
+         (SELECT COUNT(*) FROM bookings b WHERE b.session_id = s.id AND b.status IN ('booked', 'attended')) AS booked_count
+       FROM sessions s WHERE s.date >= ? ORDER BY s.date, s.start_time`,
+    )
+    .all(today());
+  res.json(sessions.map((s) => ({ ...s, spots_left: Math.max(0, s.capacity - s.booked_count) })));
+});
+
+router.get('/announcements', (_req, res) => {
+  res.json(db.prepare('SELECT * FROM announcements ORDER BY posted_at DESC LIMIT 10').all());
+});
+
+// Sign up as a new member.
+router.post('/signup', (req, res) => {
+  const { errors, out } = validateMemberInput(req.body);
+  if (errors.length) return res.status(400).json({ error: errors.join(' ') });
+
+  const existing = db.prepare('SELECT id FROM members WHERE phone = ?').get(out.phone);
+  if (existing) {
+    return res.status(409).json({ error: 'This phone number is already registered — use "I\'m a member" to log in.' });
+  }
+
+  const result = db
+    .prepare(
+      `INSERT INTO members (name, phone, email, age_bracket, skill_level, membership_type)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(out.name, out.phone, out.email ?? null, out.age_bracket ?? null, out.skill_level ?? null, out.membership_type ?? 'drop-in');
+  const member = db.prepare('SELECT * FROM members WHERE id = ?').get(result.lastInsertRowid);
+  res.status(201).json(memberView(member));
+});
+
+// "Log in" = look yourself up by phone (v1: no passwords).
+router.post('/login', (req, res) => {
+  const { member, error } = findMemberByPhone(req.body.phone);
+  if (error) return res.status(404).json({ error });
+  res.json(memberView(member));
+});
+
+// A member's own upcoming bookings.
+router.get('/my-bookings', (req, res) => {
+  const { member, error } = findMemberByPhone(req.query.phone);
+  if (error) return res.status(404).json({ error });
+  const bookings = db
+    .prepare(
+      `SELECT b.id, b.status, b.created_at,
+              s.id AS session_id, s.title, s.date, s.start_time, s.end_time, s.coach, s.price_ugx
+       FROM bookings b JOIN sessions s ON s.id = b.session_id
+       WHERE b.member_id = ? AND b.status != 'cancelled' AND s.date >= ?
+       ORDER BY s.date, s.start_time`,
+    )
+    .all(member.id, today());
+  res.json(bookings);
+});
+
+// Book a spot (or join the waitlist when full).
+router.post('/bookings', (req, res) => {
+  const { member, error } = findMemberByPhone(req.body.phone);
+  if (error) return res.status(404).json({ error });
+  const result = createBooking(member.id, Number(req.body.session_id));
+  if (!result.ok) return res.status(result.code).json({ error: result.error });
+  res.status(201).json(result.booking);
+});
+
+// Cancel one of your own bookings.
+router.post('/bookings/:id/cancel', (req, res) => {
+  const { member, error } = findMemberByPhone(req.body.phone);
+  if (error) return res.status(404).json({ error });
+  const booking = db.prepare('SELECT * FROM bookings WHERE id = ? AND member_id = ?').get(req.params.id, member.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+  res.json(cancelBooking(booking));
+});
+
+export default router;
