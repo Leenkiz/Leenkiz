@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatUGX, formatDate } from '../format.js';
 import { getMemberPhone, setMemberPhone } from '../member.js';
+import PlaySection from '../PlaySection.jsx';
 
 // The member area: her upcoming bookings, booking a spot, and paying by MoMo.
 // "Login" is just her phone number (v1 decision — no passwords).
@@ -307,6 +308,8 @@ function MemberHome({ member, onLogout }) {
           ))}
         </ul>
       </section>
+
+      <PlaySection member={member} />
     </Shell>
   );
 }

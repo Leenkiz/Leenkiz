@@ -5,9 +5,10 @@ import Overview from '../admin/Overview.jsx';
 import Sessions from '../admin/Sessions.jsx';
 import Members from '../admin/Members.jsx';
 import Payments from '../admin/Payments.jsx';
+import Play from '../admin/Play.jsx';
 import Announcements from '../admin/Announcements.jsx';
 
-const TABS = ['Overview', 'Sessions', 'Members', 'Payments', 'Announcements'];
+const TABS = ['Overview', 'Sessions', 'Members', 'Payments', 'Play', 'Announcements'];
 
 export default function Admin() {
   const [loggedIn, setLoggedIn] = useState(Boolean(getToken()));
@@ -66,6 +67,7 @@ export default function Admin() {
         {tab === 'Sessions' && <Sessions />}
         {tab === 'Members' && <Members />}
         {tab === 'Payments' && <Payments />}
+        {tab === 'Play' && <Play />}
         {tab === 'Announcements' && <Announcements />}
       </main>
     </div>
