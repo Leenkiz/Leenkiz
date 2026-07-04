@@ -12,7 +12,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     app: 'Gems & Rackets API',
-    database: db.open ? 'connected' : 'unavailable',
+    database: db.isOpen ? 'connected' : 'unavailable',
   });
 });
 
