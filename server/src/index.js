@@ -10,6 +10,7 @@ import bookingsRouter from './routes/bookings.js';
 import announcementsRouter from './routes/announcements.js';
 import paymentsRouter from './routes/payments.js';
 import { playPublicRouter, playAdminRouter } from './routes/play.js';
+import attendanceRouter from './routes/attendance.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,6 +38,7 @@ app.use('/api/bookings', requireAdmin, bookingsRouter);
 app.use('/api/announcements', requireAdmin, announcementsRouter);
 app.use('/api/payments', requireAdmin, paymentsRouter);
 app.use('/api/play-requests', requireAdmin, playAdminRouter);
+app.use('/api/attendance', requireAdmin, attendanceRouter);
 
 app.listen(PORT, () => {
   console.log(`Gems & Rackets API running at http://localhost:${PORT}`);

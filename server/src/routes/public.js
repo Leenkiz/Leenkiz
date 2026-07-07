@@ -155,6 +155,37 @@ router.post('/payments', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM payments WHERE id = ?').get(result.lastInsertRowid));
 });
 
+// Self check-in ("I'm here") — only on the day of the session. A booked
+// member is marked attended; a walk-in without a booking gets one created
+// and marked attended in the same step (she is physically at the court, so
+// capacity doesn't apply).
+router.post('/checkin', (req, res) => {
+  const { member, error } = findMemberByPhone(req.body.phone);
+  if (error) return res.status(404).json({ error });
+  const session = db.prepare('SELECT id, date, title FROM sessions WHERE id = ?').get(Number(req.body.session_id));
+  if (!session) return res.status(404).json({ error: 'Session not found.' });
+  if (session.date !== today()) {
+    return res.status(400).json({ error: 'Check-in is only open on the day of the session.' });
+  }
+
+  const existing = db
+    .prepare('SELECT * FROM bookings WHERE member_id = ? AND session_id = ?')
+    .get(member.id, session.id);
+  let walkIn = false;
+  if (existing) {
+    if (existing.status === 'attended') return res.status(409).json({ error: 'You are already checked in.' });
+    walkIn = existing.status === 'cancelled';
+    db.prepare("UPDATE bookings SET status = 'attended' WHERE id = ?").run(existing.id);
+  } else {
+    walkIn = true;
+    db.prepare("INSERT INTO bookings (member_id, session_id, status) VALUES (?, ?, 'attended')").run(
+      member.id,
+      session.id,
+    );
+  }
+  res.status(201).json({ ok: true, walk_in: walkIn });
+});
+
 // Book a spot (or join the waitlist when full).
 router.post('/bookings', (req, res) => {
   const { member, error } = findMemberByPhone(req.body.phone);
