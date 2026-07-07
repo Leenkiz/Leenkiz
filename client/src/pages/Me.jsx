@@ -173,6 +173,19 @@ function MemberHome({ member, onLogout }) {
     }
   };
 
+  // Self check-in — the server only allows it on the session day.
+  const checkin = async (sessionId) => {
+    setError('');
+    setNotice(null);
+    try {
+      await api('/api/public/checkin', { method: 'POST', body: { phone: member.phone, session_id: sessionId } });
+      setNotice({ kind: 'ok', text: "You're checked in — enjoy your session! 🎾" });
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const submitPayment = async (reference, bookingId) => {
     setError('');
     setNotice(null);
@@ -190,7 +203,8 @@ function MemberHome({ member, onLogout }) {
   };
 
   // Monthly membership state, from her own payment history.
-  const thisMonth = new Date().toLocaleDateString('en-CA').slice(0, 7); // YYYY-MM
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const thisMonth = todayStr.slice(0, 7); // YYYY-MM
   const membershipPaid = payments.some((p) => !p.booking_id && p.status === 'confirmed' && p.date.startsWith(thisMonth));
   const membershipPending = payments.some((p) => !p.booking_id && p.status === 'pending');
 
@@ -248,16 +262,27 @@ function MemberHome({ member, onLogout }) {
                     {formatDate(b.date)} · {b.start_time}–{b.end_time}
                   </p>
                   {b.status === 'waitlist' && <p className="text-xs font-medium text-amber-700">On the waitlist</p>}
+                  {b.status === 'attended' && <p className="text-xs font-semibold text-club">✓ Checked in</p>}
                 </div>
                 <div className="text-right shrink-0 space-y-1">
                   <PaymentChip status={b.payment_status} />
-                  <div>
-                    <button onClick={() => cancel(b)} className="text-red-600 text-xs hover:underline">
-                      Cancel
-                    </button>
-                  </div>
+                  {b.status !== 'attended' && (
+                    <div>
+                      <button onClick={() => cancel(b)} className="text-red-600 text-xs hover:underline">
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
+              {b.date === todayStr && b.status !== 'attended' && (
+                <button
+                  onClick={() => checkin(b.session_id)}
+                  className="mt-2 w-full rounded-lg bg-lime px-4 py-2.5 text-forest text-sm font-bold hover:bg-club hover:text-white transition-colors"
+                >
+                  Check in — I&apos;m here 🎾
+                </button>
+              )}
               {b.payment_status === 'unpaid' && member.membership_type !== 'monthly' && payInfo && (
                 <div className="mt-2">
                   {payingFor === b.id ? (
@@ -296,6 +321,13 @@ function MemberHome({ member, onLogout }) {
               </div>
               {bookedSessionIds.has(s.id) ? (
                 <span className="text-xs font-medium text-club shrink-0">✓ Booked</span>
+              ) : s.date === todayStr ? (
+                <button
+                  onClick={() => checkin(s.id)}
+                  className="rounded-lg bg-lime px-4 py-2 text-forest text-xs font-bold hover:bg-club hover:text-white shrink-0"
+                >
+                  I&apos;m here — check in
+                </button>
               ) : (
                 <button
                   onClick={() => book(s)}
