@@ -20,11 +20,11 @@ function InstagramIcon({ className }) {
   );
 }
 
-// Row of icon links. `showHandle` adds the @handle next to each icon.
-export function SocialLinks({ className = '', iconClassName = 'w-5 h-5', showHandle = false }) {
+// Row of icon links. `showLabel` adds "Follow us on <name>" next to each icon.
+export function SocialLinks({ className = '', iconClassName = 'w-5 h-5', showLabel = false }) {
   return (
     <div className={`flex items-center justify-center gap-4 ${className}`}>
-      {SOCIAL_LINKS.map(({ name, handle, url, icon: Icon }) => (
+      {SOCIAL_LINKS.map(({ name, url, icon: Icon }) => (
         <a
           key={name}
           href={url}
@@ -34,7 +34,7 @@ export function SocialLinks({ className = '', iconClassName = 'w-5 h-5', showHan
           className="inline-flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <Icon className={iconClassName} />
-          {showHandle && <span>{handle}</span>}
+          {showLabel && <span>Follow us on {name}</span>}
         </a>
       ))}
     </div>

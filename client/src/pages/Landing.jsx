@@ -274,7 +274,7 @@ export default function Landing() {
       <footer className="bg-forest text-white/80 px-6 py-8 text-center text-sm">
         <p className="font-semibold text-white">Gems &amp; Rackets</p>
         <p className="mt-1">Lugogo Sports Centre, Kampala</p>
-        <SocialLinks className="mt-3" showHandle />
+        <SocialLinks className="mt-3" showLabel />
         <p className="mt-3 text-xs text-white/50">
           <Link to="/admin" className="hover:text-white">
             organizers
