@@ -37,6 +37,17 @@ npm run dev
 
 Then open the printed `localhost` URL in your browser. To test from your phone, use your PC's local network address (e.g. `http://192.168.x.x:PORT`) while on the same Wi-Fi.
 
+### Sharing a temporary preview link
+
+To let someone off-site try the app (free, no account), keep `npm run dev` running and, in a second window:
+
+```bash
+winget install --id Cloudflare.cloudflared   # one-time install
+cloudflared tunnel --url http://localhost:5173
+```
+
+It prints a `https://<random-words>.trycloudflare.com` link to share. The link works only while your laptop is on and both windows are running, and changes every time. Anyone with it can see the site, so use test data and a strong `ADMIN_PASSWORD`. Press Ctrl + C to stop sharing.
+
 ### Optional: the AI assistant
 
 1. Install [Ollama for Windows](https://ollama.com).
