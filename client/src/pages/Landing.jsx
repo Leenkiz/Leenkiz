@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { formatUGX, formatDate } from '../format.js';
+import { SOCIAL_LINKS, SocialLinks } from '../social.jsx';
 
 // The public club page: the community story first, then sessions, membership,
 // voices and FAQ. Photos are optional: drop files into client/public/photos/
@@ -34,6 +35,7 @@ export default function Landing() {
           alt="Gems & Rackets players on court"
           className="absolute inset-0 w-full h-full object-cover opacity-30"
         />
+        <SocialLinks className="absolute top-4 right-4 z-10 text-white/80" iconClassName="w-6 h-6" />
         <div className="relative px-6 pt-16 pb-20 text-center max-w-2xl mx-auto">
           <p className="text-xs uppercase tracking-[0.25em] text-lime font-semibold">
             Women&apos;s community tennis · Kampala
@@ -130,7 +132,8 @@ export default function Landing() {
           {sessions === null && <p className="mt-3 text-sm text-forest/50">Loading…</p>}
           {sessions?.length === 0 && (
             <p className="mt-3 text-sm text-forest/60">
-              No sessions scheduled right now — check back soon or follow our announcements.
+              No sessions scheduled right now — check back soon or follow us on Instagram for
+              updates.
             </p>
           )}
           <ul className="mt-4 space-y-2">
@@ -198,6 +201,31 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Follow along */}
+        <section className="px-6 pb-14 max-w-2xl mx-auto w-full">
+          <div className="rounded-2xl bg-club/10 px-6 py-8 text-center">
+            <h2 className="text-2xl font-bold">Follow along</h2>
+            <p className="mt-2 text-sm text-forest/70 leading-relaxed">
+              Match-day photos, new-member welcomes and Saturday highlights.
+            </p>
+            <div className="mt-5 flex justify-center gap-3 flex-wrap">
+              {SOCIAL_LINKS.map(({ name, handle, url, icon: Icon }) => (
+                <a
+                  key={name}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Follow ${handle} on ${name}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-club px-6 py-3 text-white text-sm font-semibold hover:bg-forest transition-colors"
+                >
+                  <Icon className="w-5 h-5" />
+                  Follow {handle}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Club news */}
         {announcements.length > 0 && (
           <section className="px-6 pb-14 max-w-2xl mx-auto w-full">
@@ -246,17 +274,7 @@ export default function Landing() {
       <footer className="bg-forest text-white/80 px-6 py-8 text-center text-sm">
         <p className="font-semibold text-white">Gems &amp; Rackets</p>
         <p className="mt-1">Lugogo Sports Centre, Kampala</p>
-        <p className="mt-1">
-          {/* Update the handle below if it differs from the club's Instagram. */}
-          <a
-            href="https://www.instagram.com/gemsandrackets"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-white underline-offset-2 hover:underline"
-          >
-            Follow us on Instagram
-          </a>
-        </p>
+        <SocialLinks className="mt-3" showHandle />
         <p className="mt-3 text-xs text-white/50">
           <Link to="/admin" className="hover:text-white">
             organizers
