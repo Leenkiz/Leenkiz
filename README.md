@@ -37,6 +37,17 @@ npm run dev
 
 Then open the printed `localhost` URL in your browser. To test from your phone, use your PC's local network address (e.g. `http://192.168.x.x:PORT`) while on the same Wi-Fi.
 
+### Static preview for a free host (e.g. static.app)
+
+A look-only copy of the site — pages, story, membership, FAQ — with no booking system behind it:
+
+```bash
+cd client
+npm run build:static
+```
+
+Zip the *contents* of `client/dist` (so `index.html` sits at the top of the zip) and upload the zip to the host. Sessions show as "none scheduled", and Join, booking and admin show "Can't reach the club's booking system" — those need the full app running.
+
 ### Sharing a temporary preview link
 
 To let someone off-site try the app (free, no account), keep `npm run dev` running and, in a second window:

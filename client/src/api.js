@@ -16,7 +16,13 @@ export async function api(path, { method = 'GET', body } = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const unreachable = new Error("Can't reach the club's booking system right now. Please try again later.");
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined }).catch(() => {
+    throw unreachable;
+  });
+  // A non-JSON reply means the API isn't there (server stopped, or a
+  // static-only preview copy of the site).
+  if (!(res.headers.get('content-type') || '').includes('application/json')) throw unreachable;
   const data = await res.json().catch(() => ({}));
 
   if (res.status === 401 && !path.endsWith('/login')) {
