@@ -5,16 +5,28 @@ import { formatUGX, formatDate } from '../format.js';
 import { SOCIAL_LINKS, SocialLinks } from '../social.jsx';
 
 // The public club page: the community story first, then sessions, membership,
-// voices and FAQ. Photos are optional: drop files into client/public/photos/
-// (hero.jpg, community.jpg, court.jpg) and they appear; missing ones fall
-// back to brand-green panels so the page always looks complete.
+// voices and FAQ. Photos live in client/public/photos/ (see the README there);
+// a missing one falls back to a brand-green panel so the page always looks
+// complete.
+
+// BASE_URL keeps photo paths working when a static preview is hosted in a
+// sub-folder (it is "./" in `npm run build:static`, "/" otherwise).
+const photo = (name) => `${import.meta.env.BASE_URL}photos/${name}`;
 
 // Renders an image only if it actually exists; otherwise renders nothing
 // (the parent supplies the fallback background).
-function Photo({ src, alt, className }) {
+function Photo({ src, alt, className, lazy }) {
   const [ok, setOk] = useState(true);
   if (!ok) return null;
-  return <img src={src} alt={alt} className={className} onError={() => setOk(false)} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading={lazy ? 'lazy' : undefined}
+      onError={() => setOk(false)}
+    />
+  );
 }
 
 export default function Landing() {
@@ -30,13 +42,18 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-forest flex flex-col">
       {/* Hero */}
       <header className="relative bg-forest text-white overflow-hidden">
-        <Photo
-          src="/photos/hero.jpg"
-          alt="Gems & Rackets players on court"
-          className="absolute inset-0 w-full h-full object-cover opacity-30"
-        />
+        {/* Wide screens: photo behind the text. Phones are too narrow for that
+            (the title would cover every face), so the photo sits below instead. */}
+        <div className="hidden md:block">
+          <Photo
+            src={photo('hero.jpg')}
+            alt="Gems & Rackets members with their rackets on court"
+            className="absolute inset-0 w-full h-full object-cover object-[center_40%]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-forest/90 via-forest/70 to-forest/40" />
+        </div>
         <SocialLinks className="absolute top-4 right-4 z-10 text-white/80" iconClassName="w-6 h-6" />
-        <div className="relative px-6 pt-16 pb-20 text-center max-w-2xl mx-auto">
+        <div className="relative px-6 pt-16 pb-10 md:pb-40 text-center max-w-2xl mx-auto">
           <p className="text-xs uppercase tracking-[0.25em] text-lime font-semibold">
             Women&apos;s community tennis · Kampala
           </p>
@@ -61,13 +78,21 @@ export default function Landing() {
             </Link>
           </div>
         </div>
+        <div className="md:hidden relative aspect-[4/3]">
+          <Photo
+            src={photo('hero.jpg')}
+            alt="Gems & Rackets members with their rackets on court"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-forest to-transparent" />
+        </div>
       </header>
 
       <main className="flex-1 w-full">
         {/* Our story */}
         <section className="px-6 py-14 max-w-3xl mx-auto">
-          <div className="md:flex md:items-center md:gap-10">
-            <div className="md:flex-1">
+          <div>
+            <div>
               <h2 className="text-3xl font-bold leading-tight">
                 A club built on friendship,
                 <br />
@@ -84,16 +109,20 @@ export default function Landing() {
                 sure nobody plays alone. The gems are the women; the bonds are the point.
               </p>
             </div>
-            <div className="mt-8 md:mt-0 md:w-64 shrink-0">
-              <div className="relative rounded-2xl overflow-hidden bg-club/10 aspect-[4/5]">
+            <figure className="mt-8">
+              <div className="relative rounded-2xl overflow-hidden bg-club/10 aspect-[4/3]">
                 <span className="absolute inset-0 flex items-center justify-center text-6xl">🎾</span>
                 <Photo
-                  src="/photos/community.jpg"
-                  alt="Members of Gems & Rackets together"
+                  src={photo('community.jpg')}
+                  alt="Gems & Rackets members of all ages with rackets raised beside the club banner"
                   className="absolute inset-0 w-full h-full object-cover"
+                  lazy
                 />
               </div>
-            </div>
+              <figcaption className="mt-2 text-xs text-forest/50 text-center">
+                Saturday at the courts — every age, every level.
+              </figcaption>
+            </figure>
           </div>
         </section>
 
@@ -121,6 +150,18 @@ export default function Landing() {
                 emoji="💚"
                 title="A women's community"
                 text="A safe, discreet space run by women, for women. Your details stay private; the friendships don't have to."
+              />
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <CoachingPhoto
+                name="coaching-drills.jpg"
+                alt="Members practising forehands in a drill session"
+                caption="Drills that build confidence"
+              />
+              <CoachingPhoto
+                name="coaching-juniors.jpg"
+                alt="A coach working with a young player"
+                caption="Coaching for every age"
               />
             </div>
           </div>
@@ -292,6 +333,17 @@ function FeatureCard({ emoji, title, text }) {
       <h3 className="mt-3 font-semibold">{title}</h3>
       <p className="mt-1.5 text-sm text-forest/70 leading-relaxed">{text}</p>
     </div>
+  );
+}
+
+function CoachingPhoto({ name, alt, caption }) {
+  return (
+    <figure>
+      <div className="relative rounded-2xl overflow-hidden bg-club/10 aspect-[3/4]">
+        <Photo src={photo(name)} alt={alt} className="absolute inset-0 w-full h-full object-cover" lazy />
+      </div>
+      <figcaption className="mt-2 text-xs font-medium text-forest/70 text-center">{caption}</figcaption>
+    </figure>
   );
 }
 
